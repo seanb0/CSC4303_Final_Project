@@ -30,6 +30,7 @@ export default function Account() {
       <h2>My Account</h2>
       <div className="account-section">
         <p>Signed in as <strong>{user.name}</strong> ({user.email})</p>
+        {user.dateOfBirth && <p>Date of Birth: {user.dateOfBirth}</p>}
       </div>
       <div className="account-section">
         <h3>Pricing Tier</h3>

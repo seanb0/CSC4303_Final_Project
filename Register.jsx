@@ -14,6 +14,7 @@ export default function Register() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
+  const [dateOfBirth, setDateOfBirth] = useState('')
   const [subscription, setSubscription] = useState('')
   const [error, setError] = useState(null)
   const [success, setSuccess] = useState(null)
@@ -38,6 +39,11 @@ export default function Register() {
       return
     }
 
+    if (!dateOfBirth) {
+      setError('Please enter your date of birth.')
+      return
+    }
+
     if (!subscription) {
       setError('Please select a pricing tier.')
       return
@@ -49,6 +55,7 @@ export default function Register() {
         name: name.trim(),
         email: email.trim(),
         password,
+        dateOfBirth,
         subscription,
       })
       setSuccess(`Welcome, ${profile.name}! Your account is ready.`)
@@ -100,6 +107,19 @@ export default function Register() {
             type="password"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
+            required
+            style={{ width: '100%', maxWidth: '320px' }}
+          />
+        </div>
+
+        <div style={{ marginBottom: '0.75rem' }}>
+          <label htmlFor="dateOfBirth">Date of Birth:</label>
+          <br />
+          <input
+            id="dateOfBirth"
+            type="date"
+            value={dateOfBirth}
+            onChange={(event) => setDateOfBirth(event.target.value)}
             required
             style={{ width: '100%', maxWidth: '320px' }}
           />

@@ -22,6 +22,17 @@ function normalizeSubscription(value) {
   return String(value)
 }
 
+function generateUserId() {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID()
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0
+    const v = c === 'x' ? r : (r & 0x3) | 0x8
+    return v.toString(16)
+  })
+}
+
 const STORAGE_KEY = 'flixnet-current-user'
 
 function getStoredUser() {
@@ -59,7 +70,7 @@ export function AuthProvider({ children }) {
 
     const { data, error } = await supabase
       .from('users')
-      .select('user_id, name, email, subscription')
+      .select('user_id, name, email, subscription, date_of_birth')
       .eq('name', name)
       .eq('password', password)
       .maybeSingle()
@@ -76,6 +87,7 @@ export function AuthProvider({ children }) {
       id: data.user_id,
       name: data.name,
       email: data.email,
+      dateOfBirth: data.date_of_birth,
       subscription: normalizeSubscription(data.subscription),
       source: 'supabase',
     }
@@ -84,9 +96,9 @@ export function AuthProvider({ children }) {
     return profile
   }
 
-  async function register({ name, email, password, subscription }) {
-    if (!name || !email || !password) {
-      throw new Error('Name, email, and password are required.')
+  async function register({ name, email, password, dateOfBirth, subscription }) {
+    if (!name || !email || !password || !dateOfBirth) {
+      throw new Error('Name, email, password, and date of birth are required.')
     }
     if (!subscription) {
       throw new Error('Please select a pricing tier.')
@@ -106,15 +118,18 @@ export function AuthProvider({ children }) {
       throw new Error('An account with that name or email already exists.')
     }
 
+    const userId = generateUserId()
     const { data: inserted, error } = await supabase
       .from('users')
       .insert({
+        user_id: userId,
         name,
         email,
         password,
+        date_of_birth: dateOfBirth,
         subscription,
       })
-      .select('user_id, name, email, subscription')
+      .select('user_id, name, email, subscription, date_of_birth')
       .single()
 
     if (error || !inserted) {
@@ -125,6 +140,7 @@ export function AuthProvider({ children }) {
       id: inserted.user_id,
       name: inserted.name,
       email: inserted.email,
+      dateOfBirth: inserted.date_of_birth,
       subscription: normalizeSubscription(inserted.subscription),
       source: 'supabase',
     }

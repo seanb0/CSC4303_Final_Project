@@ -122,8 +122,10 @@ export default function Browse() {
                         {isUrlString(value) ? (
                           <a
                             href={value.startsWith('http') ? value : `https://${value}`}
+                            target="_blank"
+                            rel="noreferrer"
                           >
-                            Watch
+                            {String(value)}
                           </a>
                         ) : (
                           display
