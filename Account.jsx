@@ -2,17 +2,17 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from './AuthContext.jsx'
 
 const subscriptionTiers = {
-  'Basic': 4.99,
-  'Standard': 9.99,
-  'Premium': 14.99,
+  Basic: 4.99,
+  Standard: 9.99,
+  Premium: 14.99,
 }
 
 export default function Account() {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
 
-  const handleLogout = () => {
-    logout()
+  const handleLogout = async () => {
+    await logout()
     navigate('/login')
   }
 
@@ -29,7 +29,9 @@ export default function Account() {
     <div>
       <h2>My Account</h2>
       <div className="account-section">
-        <p>Signed in as <strong>{user.name}</strong> ({user.email})</p>
+        <p>
+          Signed in as <strong>{user.name}</strong> ({user.email})
+        </p>
         {user.dateOfBirth && <p>Date of Birth: {user.dateOfBirth}</p>}
       </div>
       <div className="account-section">
@@ -40,7 +42,9 @@ export default function Account() {
           <p>No pricing tier selected yet.</p>
         )}
       </div>
-      <button onClick={handleLogout}>Logout</button>
+      <button type="button" onClick={handleLogout}>
+        Logout
+      </button>
     </div>
   )
 }

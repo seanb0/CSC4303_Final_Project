@@ -1,13 +1,12 @@
+import './App.css'
 import { BrowserRouter, Routes, Route, Link, useNavigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './AuthContext.jsx'
 import Login from './Login.jsx'
 import Register from './Register.jsx'
 import Browse from './Browse.jsx'
-import ConnectionCheck from './ConnectionCheck.jsx'
 import Analytics from './Analytics.jsx'
 import Account from './Account.jsx'
 import { isAdmin } from './auth'
-import './App.css'
 
 function Home() {
   return (
@@ -37,9 +36,6 @@ function AppNav() {
       </Link>
       <Link to="/browse" style={{ marginRight: '1rem' }}>
         Browse Movies
-      </Link>
-      <Link to="/check-connection" style={{ marginRight: '1rem' }}>
-        Check Connection
       </Link>
       {isAdmin(user) && (
         <Link to="/admin/analytics" style={{ marginRight: '1rem' }}>
@@ -81,7 +77,6 @@ export default function MyApp() {
               <Route path="/register" element={<Register />} />
               <Route path="/browse" element={<Browse />} />
               <Route path="/account" element={<Account />} />
-              <Route path="/check-connection" element={<ConnectionCheck />} />
               <Route path="/admin/analytics" element={<Analytics />} />
             </Routes>
           </div>

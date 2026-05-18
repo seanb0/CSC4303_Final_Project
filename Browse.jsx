@@ -18,12 +18,23 @@ const subscriptionTiers = {
   Premium: 14.99,
 }
 
+const normalizeUrl = (value) => {
+  if (typeof value !== 'string') return ''
+  return value.startsWith('http') ? value : `https://${value}`
+}
+
+const isPlayableMedia = (url) => {
+  if (typeof url !== 'string') return false
+  return /\.(mp4|webm|ogg|mp3|wav|m4a|mov|flac|aac|m3u8)(\?.*)?$/i.test(url)
+}
+
 export default function Browse() {
   const { user } = useAuth()
   const [movies, setMovies] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [selectedGenre, setSelectedGenre] = useState('')
+  const [selectedMovie, setSelectedMovie] = useState(null)
 
   useEffect(() => {
     if (!user) {
@@ -49,13 +60,22 @@ export default function Browse() {
     loadMovies()
   }, [user])
 
-  async function handleMovieClick(movie) {
+  async function handleMovieClick(movie, event) {
+    if (event?.preventDefault) {
+      event.preventDefault()
+    }
+
+    const movieUrl = getMovieUrl(movie)
+    const normalizedUrl = normalizeUrl(movieUrl)
+
+    setSelectedMovie({ ...movie, playbackUrl: normalizedUrl })
+
     await logAnalytics('movie_click', {
       page: 'browse',
       movie_id: movie.movie_id ?? movie.id,
       movie_title: getMovieTitle(movie),
       metadata: {
-        movie_link: getMovieUrl(movie),
+        movie_link: movieUrl,
         clicked_by: user?.name ?? 'anonymous',
       },
     })
@@ -99,6 +119,38 @@ export default function Browse() {
             : 'None selected'}
         </p>
       </div>
+
+      {selectedMovie && selectedMovie.playbackUrl && (
+        <div style={{ marginBottom: '1.5rem', padding: '1rem', border: '1px solid rgba(0,0,0,0.12)', borderRadius: 8 }}>
+          <h3 style={{ marginTop: 0, marginBottom: '0.75rem' }}>Now playing: {getMovieTitle(selectedMovie)}</h3>
+          {isPlayableMedia(selectedMovie.playbackUrl) ? (
+            selectedMovie.playbackUrl.match(/\.(mp3|wav|m4a|aac|flac)(\?.*)?$/i) ? (
+              <audio controls src={selectedMovie.playbackUrl} style={{ width: '100%' }} />
+            ) : (
+              <video controls src={selectedMovie.playbackUrl} style={{ width: '100%', maxHeight: 520 }} />
+            )
+          ) : (
+            <iframe
+              title={`Playback for ${getMovieTitle(selectedMovie)}`}
+              src={selectedMovie.playbackUrl}
+              style={{ width: '100%', height: 520, border: '1px solid rgba(0,0,0,0.12)' }}
+              sandbox="allow-same-origin allow-scripts allow-forms allow-popups"
+            />
+          )}
+          <div style={{ marginTop: '0.75rem', display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+            <button
+              type="button"
+              onClick={() => setSelectedMovie(null)}
+              style={{ padding: '0.5rem 0.75rem', cursor: 'pointer' }}
+            >
+              Close player
+            </button>
+            <a href={selectedMovie.playbackUrl} target="_blank" rel="noreferrer">
+              Open in new tab
+            </a>
+          </div>
+        </div>
+      )}
 
       {movies.length === 0 ? (
         <p>No movies found in the database.</p>
@@ -172,10 +224,8 @@ export default function Browse() {
                         >
                           {isUrlString(value) ? (
                             <a
-                              href={value.startsWith('http') ? value : `https://${value}`}
-                              target="_blank"
-                              rel="noreferrer"
-                              onClick={() => handleMovieClick(movie)}
+                              href={normalizeUrl(value)}
+                              onClick={(event) => handleMovieClick(movie, event)}
                             >
                               {String(value)}
                             </a>
