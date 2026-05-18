@@ -35,7 +35,8 @@ export default function MyApp() {
         {!currentUser && <Link to="/login" style={{ marginRight: '1rem' }}>Login</Link>}
         <Link to="/browse" style={{ marginRight: '1rem' }}>Browse Movies</Link>
         <Link to="/check-connection" style={{ marginRight: '1rem' }}>Check Connection</Link>
-        {isAdmin(currentUser) && (
+        {
+        isAdmin(currentUser) && (
           <Link to="/admin/analytics" style={{ marginRight: '1rem' }}>Admin Analytics</Link>
         )}
         {currentUser && (

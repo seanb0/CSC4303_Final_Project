@@ -18,5 +18,5 @@ export function clearCurrentUser() {
 }
 
 export function isAdmin(user) {
-  return user?.role === 'admin'
+  return user?.name === 'admin'
 }

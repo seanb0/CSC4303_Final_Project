@@ -20,7 +20,7 @@ export default function Login({ onLogin }) {
 
     const { data, error } = await supabase
       .from('users')
-      .select('user_id, name, role, email')
+      .select('user_id, name, email')
       .eq('name', name)
       .eq('password', password)
       .single()
