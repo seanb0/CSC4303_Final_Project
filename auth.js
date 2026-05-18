@@ -1,20 +1,32 @@
-export function getCurrentUser() {
+const STORAGE_KEY = 'flixnet-current-user'
+const LEGACY_STORAGE_KEY = 'flixnet_user'
+
+function readStorageKey(key) {
   try {
-    const raw = localStorage.getItem('flixnet_user')
+    const raw = localStorage.getItem(key)
     return raw ? JSON.parse(raw) : null
   } catch (error) {
-    console.warn('Failed to read current user from storage:', error)
+    console.warn(`Failed to read user from storage key ${key}:`, error)
     return null
   }
 }
 
+export function getCurrentUser() {
+  return readStorageKey(STORAGE_KEY) || readStorageKey(LEGACY_STORAGE_KEY)
+}
+
 export function saveCurrentUser(user) {
   if (!user) return
-  localStorage.setItem('flixnet_user', JSON.stringify(user))
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(user))
+  } catch (error) {
+    console.warn('Failed to write current user to storage:', error)
+  }
 }
 
 export function clearCurrentUser() {
-  localStorage.removeItem('flixnet_user')
+  localStorage.removeItem(STORAGE_KEY)
+  localStorage.removeItem(LEGACY_STORAGE_KEY)
 }
 
 export function isAdmin(user) {

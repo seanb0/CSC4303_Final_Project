@@ -23,6 +23,7 @@ export default function Browse() {
   const [movies, setMovies] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [selectedGenre, setSelectedGenre] = useState('')
 
   useEffect(() => {
     if (!user) {
@@ -81,6 +82,8 @@ export default function Browse() {
   }
 
   const columns = movies.length > 0 ? Object.keys(movies[0]) : []
+  const genreOptions = Array.from(new Set(movies.map((movie) => movie.genre).filter(Boolean))).sort()
+  const visibleMovies = selectedGenre ? movies.filter((movie) => movie.genre === selectedGenre) : movies
 
   return (
     <div>
@@ -100,68 +103,95 @@ export default function Browse() {
       {movies.length === 0 ? (
         <p>No movies found in the database.</p>
       ) : (
-        <div style={{ overflowX: 'auto', marginTop: '1rem' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '1000px' }}>
-            <thead>
-              <tr>
-                {columns.map((column) => (
-                  <th
-                    key={column}
-                    style={{
-                      border: '1px solid rgba(0,0,0,0.12)',
-                      padding: '0.75rem',
-                      textAlign: 'left',
-                      background: 'rgba(0,0,0,0.05)',
-                    }}
-                  >
-                    {column}
-                  </th>
+        <>
+          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <span style={{ fontWeight: 600 }}>Genre:</span>
+              <select
+                value={selectedGenre}
+                onChange={(event) => setSelectedGenre(event.target.value)}
+                style={{ padding: '0.5rem', minWidth: 180 }}
+              >
+                <option value="">All genres</option>
+                {genreOptions.map((genre) => (
+                  <option key={genre} value={genre}>
+                    {genre}
+                  </option>
                 ))}
-              </tr>
-            </thead>
-            <tbody>
-              {movies.map((movie, index) => (
-                <tr key={movie.id ?? movie.movie_id ?? index}>
-                  {columns.map((column) => {
-                    const value = movie[column]
-                    const display =
-                      value === null || value === undefined
-                        ? '-'
-                        : typeof value === 'object'
-                        ? JSON.stringify(value)
-                        : String(value)
-
-                    return (
-                      <td
-                        key={column}
-                        style={{
-                          border: '1px solid rgba(0,0,0,0.12)',
-                          padding: '0.75rem',
-                          verticalAlign: 'top',
-                        }}
-                      >
-                        {isUrlString(value) ? (
-                          <a
-                            href={value.startsWith('http') ? value : `https://${value}`}
-                            target="_blank"
-                            rel="noreferrer"
-                            onClick={() => handleMovieClick(movie)}
-                          >
-                            {String(value)}
-                          </a>
-                        ) : (
-                          display
-                        )}
-                      </td>
-                    )
-                  })}
+              </select>
+            </label>
+            {selectedGenre && (
+              <button
+                type="button"
+                onClick={() => setSelectedGenre('')}
+                style={{ padding: '0.5rem 0.75rem', cursor: 'pointer' }}
+              >
+                Clear filter
+              </button>
+            )}
+          </div>
+          <div style={{ overflowX: 'auto', marginTop: '1rem' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '1000px' }}>
+              <thead>
+                <tr>
+                  {columns.map((column) => (
+                    <th
+                      key={column}
+                      style={{
+                        border: '1px solid rgba(0,0,0,0.12)',
+                        padding: '0.75rem',
+                        textAlign: 'left',
+                        background: 'rgba(0,0,0,0.05)',
+                      }}
+                    >
+                      {column}
+                    </th>
+                  ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {visibleMovies.map((movie, index) => (
+                  <tr key={movie.id ?? movie.movie_id ?? index}>
+                    {columns.map((column) => {
+                      const value = movie[column]
+                      const display =
+                        value === null || value === undefined
+                          ? '-'
+                          : typeof value === 'object'
+                          ? JSON.stringify(value)
+                          : String(value)
+
+                      return (
+                        <td
+                          key={column}
+                          style={{
+                            border: '1px solid rgba(0,0,0,0.12)',
+                            padding: '0.75rem',
+                            verticalAlign: 'top',
+                          }}
+                        >
+                          {isUrlString(value) ? (
+                            <a
+                              href={value.startsWith('http') ? value : `https://${value}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              onClick={() => handleMovieClick(movie)}
+                            >
+                              {String(value)}
+                            </a>
+                          ) : (
+                            display
+                          )}
+                        </td>
+                      )
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
     </div>
   )
 }
-

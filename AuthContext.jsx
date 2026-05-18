@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react'
 import { supabase } from './supabaseclient'
+import { getCurrentUser, saveCurrentUser, clearCurrentUser } from './auth'
 
 const AuthContext = createContext(null)
 
@@ -33,30 +34,12 @@ function generateUserId() {
   })
 }
 
-const STORAGE_KEY = 'flixnet-current-user'
-
-function getStoredUser() {
-  try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY))
-  } catch {
-    return null
-  }
-}
-
-function setStoredUser(user) {
-  if (!user) {
-    localStorage.removeItem(STORAGE_KEY)
-    return
-  }
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(user))
-}
-
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const saved = getStoredUser()
+    const saved = getCurrentUser()
     if (saved) {
       setUser(saved)
     }
@@ -92,7 +75,7 @@ export function AuthProvider({ children }) {
       source: 'supabase',
     }
     setUser(profile)
-    setStoredUser(profile)
+    saveCurrentUser(profile)
     return profile
   }
 
@@ -145,12 +128,13 @@ export function AuthProvider({ children }) {
       source: 'supabase',
     }
     setUser(profile)
-    setStoredUser(profile)
+    saveCurrentUser(profile)
     return profile
   }
 
   async function logout() {
     await supabase.auth.signOut()
+    clearCurrentUser()
     setUser(null)
   }
 
