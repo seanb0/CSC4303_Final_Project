@@ -2,38 +2,20 @@ import { createContext, useContext, useEffect, useMemo, useState } from 'react'
 import { supabase } from './supabaseclient'
 
 const AuthContext = createContext(null)
+const STORAGE_KEY = 'flixnet-current-user'
 
-function normalizeSubscription(value) {
-  if (!value) return ''
-  if (Array.isArray(value)) {
-    return value[0] || ''
-  }
+function normalizeSubscriptions(value) {
+  if (!value) return []
+  if (Array.isArray(value)) return value
   if (typeof value === 'string') {
     try {
-      const parsed = JSON.parse(value)
-      if (Array.isArray(parsed)) {
-        return parsed[0] || ''
-      }
-      return String(parsed)
+      return JSON.parse(value)
     } catch {
-      return value.trim()
+      return value.split(',').map((item) => item.trim()).filter(Boolean)
     }
   }
-  return String(value)
+  return []
 }
-
-function generateUserId() {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return crypto.randomUUID()
-  }
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-    const r = (Math.random() * 16) | 0
-    const v = c === 'x' ? r : (r & 0x3) | 0x8
-    return v.toString(16)
-  })
-}
-
-const STORAGE_KEY = 'flixnet-current-user'
 
 function getStoredUser() {
   try {
@@ -65,12 +47,12 @@ export function AuthProvider({ children }) {
 
   async function login({ name, password }) {
     if (!name || !password) {
-      throw new Error('Name and password are required.')
+      throw new Error('name and password are required.')
     }
 
     const { data, error } = await supabase
       .from('users')
-      .select('user_id, name, email, subscription, date_of_birth')
+      .select('user_id, name, email, subscription')
       .eq('name', name)
       .eq('password', password)
       .maybeSingle()
@@ -80,15 +62,14 @@ export function AuthProvider({ children }) {
     }
 
     if (!data) {
-      throw new Error('Login failed. Please check your name and password.')
+      throw new Error('Login failed. Please check your email and password.')
     }
 
     const profile = {
       id: data.user_id,
       name: data.name,
       email: data.email,
-      dateOfBirth: data.date_of_birth,
-      subscription: normalizeSubscription(data.subscription),
+      subscription: data.subscription,
       source: 'supabase',
     }
     setUser(profile)
@@ -96,52 +77,43 @@ export function AuthProvider({ children }) {
     return profile
   }
 
-  async function register({ name, email, password, dateOfBirth, subscription }) {
-    if (!name || !email || !password || !dateOfBirth) {
+  async function register({ name, email, password, subscription, date_of_birth }) {
+    if (!name || !email || !password || !date_of_birth) {
       throw new Error('Name, email, password, and date of birth are required.')
     }
-    if (!subscription) {
+    if (!subscription || subscription.length === 0) {
       throw new Error('Please select a pricing tier.')
     }
 
-    const { data: existingInDb, error: checkError } = await supabase
-      .from('users')
-      .select('user_id')
-      .or(`name.eq.${name},email.eq.${email}`)
-      .maybeSingle()
+    // Pass ALL profile fields through signUp options.data so the
+    // handle_new_user trigger can write them to public.users.
+    // This avoids any client-side INSERT, which was colliding with the
+    // trigger's automatic row creation and causing duplicate-key errors.
+    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: { name, date_of_birth, subscription, password },
+      },
+    })
 
-    if (checkError) {
-      throw new Error(checkError.message)
+    if (signUpError) {
+      throw new Error(signUpError.message)
     }
 
-    if (existingInDb) {
-      throw new Error('An account with that name or email already exists.')
+    const authUser = signUpData?.user
+    if (!authUser || !authUser.id) {
+      throw new Error('Registration failed creating auth user.')
     }
 
-    const userId = generateUserId()
-    const { data: inserted, error } = await supabase
-      .from('users')
-      .insert({
-        user_id: userId,
-        name,
-        email,
-        password,
-        date_of_birth: dateOfBirth,
-        subscription,
-      })
-      .select('user_id, name, email, subscription, date_of_birth')
-      .single()
-
-    if (error || !inserted) {
-      throw new Error(`Registration failed: ${error?.message ?? 'unknown error'}`)
-    }
-
+    // Build the profile from what we already know — no second DB round-trip
+    // needed. The trigger has already written (or is writing) the full row.
     const profile = {
-      id: inserted.user_id,
-      name: inserted.name,
-      email: inserted.email,
-      dateOfBirth: inserted.date_of_birth,
-      subscription: normalizeSubscription(inserted.subscription),
+      id: authUser.id,
+      name,
+      email,
+      subscription,
+      date_of_birth,
       source: 'supabase',
     }
     setUser(profile)
@@ -149,9 +121,9 @@ export function AuthProvider({ children }) {
     return profile
   }
 
-  async function logout() {
-    await supabase.auth.signOut()
+  function logout() {
     setUser(null)
+    setStoredUser(null)
   }
 
   const value = useMemo(
