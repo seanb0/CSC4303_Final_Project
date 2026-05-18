@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { supabase } from './supabaseclient'
-import { getCurrentUser } from './auth'
+import { useAuth } from './AuthContext.jsx'
 import { logAnalytics } from './analytics'
 
 const isUrlString = (value) => {
@@ -11,17 +12,26 @@ const isUrlString = (value) => {
 const getMovieUrl = (movie) => movie.url || movie.link || movie.movie_url || movie.link_url || ''
 const getMovieTitle = (movie) => movie.title || movie.name || movie.movie_title || `ID ${movie.movie_id ?? movie.id ?? 'unknown'}`
 
+const subscriptionTiers = {
+  Basic: 4.99,
+  Standard: 9.99,
+  Premium: 14.99,
+}
+
 export default function Browse() {
+  const { user } = useAuth()
   const [movies, setMovies] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const currentUser = getCurrentUser()
 
   useEffect(() => {
+    if (!user) {
+      setLoading(false)
+      return
+    }
+
     async function loadMovies() {
-      const { data, error } = await supabase
-        .from('movies')
-        .select('*')
+      const { data, error } = await supabase.from('movies').select('*')
 
       if (error) {
         setError(error.message)
@@ -36,7 +46,7 @@ export default function Browse() {
     }
 
     loadMovies()
-  }, [])
+  }, [user])
 
   async function handleMovieClick(movie) {
     await logAnalytics('movie_click', {
@@ -45,9 +55,21 @@ export default function Browse() {
       movie_title: getMovieTitle(movie),
       metadata: {
         movie_link: getMovieUrl(movie),
-        clicked_by: currentUser?.name ?? 'anonymous',
+        clicked_by: user?.name ?? 'anonymous',
       },
     })
+  }
+
+  if (!user) {
+    return (
+      <div>
+        <h2>Browse Movies</h2>
+        <p>You need to be logged in to browse movie links.</p>
+        <p>
+          <Link to="/login">Login</Link> or <Link to="/register">create an account</Link> to continue.
+        </p>
+      </div>
+    )
   }
 
   if (loading) {
@@ -63,11 +85,23 @@ export default function Browse() {
   return (
     <div>
       <h2>Browse Movies</h2>
+      <div className="info-section">
+        <p>
+          <strong>Signed in as:</strong> {user.name}
+        </p>
+        <p>
+          <strong>Pricing Tier:</strong>{' '}
+          {user.subscription
+            ? `${user.subscription} ($${subscriptionTiers[user.subscription]}/month)`
+            : 'None selected'}
+        </p>
+      </div>
+
       {movies.length === 0 ? (
         <p>No movies found in the database.</p>
       ) : (
         <div style={{ overflowX: 'auto', marginTop: '1rem' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '720px' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '1000px' }}>
             <thead>
               <tr>
                 {columns.map((column) => (
@@ -130,3 +164,4 @@ export default function Browse() {
     </div>
   )
 }
+

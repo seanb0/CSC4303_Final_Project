@@ -1,10 +1,9 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { supabase } from './supabaseclient'
-import { saveCurrentUser } from './auth'
-import { logAnalytics } from './analytics'
+import { Link, Navigate, useNavigate } from 'react-router-dom'
+import { useAuth } from './AuthContext.jsx'
 
-export default function Login({ onLogin }) {
+export default function Login() {
+  const { user, login } = useAuth()
   const [name, setName] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState(null)
@@ -12,38 +11,27 @@ export default function Login({ onLogin }) {
   const [success, setSuccess] = useState(null)
   const navigate = useNavigate()
 
+  if (user) {
+    return <Navigate to="/browse" replace />
+  }
+
   async function handleSubmit(event) {
     event.preventDefault()
     setError(null)
     setSuccess(null)
     setLoading(true)
 
-    const { data, error } = await supabase
-      .from('users')
-      .select('user_id, name, email')
-      .eq('name', name)
-      .eq('password', password)
-      .single()
-
-    setLoading(false)
-
-    if (error || !data) {
-      await logAnalytics('login_failure', {
-        page: 'login',
-        metadata: { attempted_name: name },
-      })
-      setError('Login failed. Please check your name and password.')
-      return
+    try {
+      const profile = await login({ name: name.trim(), password })
+      setSuccess(`Welcome back, ${profile.name}! Redirecting...`)
+      setLoading(false)
+      setTimeout(() => {
+        navigate('/browse')
+      }, 800)
+    } catch (loginError) {
+      setLoading(false)
+      setError(loginError.message)
     }
-
-    saveCurrentUser(data)
-    onLogin?.(data)
-    await logAnalytics('login_success', { page: 'login' })
-
-    setSuccess(`Welcome back, ${data.name}! Redirecting to Browse Movies...`)
-    setTimeout(() => {
-      navigate('/browse')
-    }, 1000)
   }
 
   return (
@@ -80,6 +68,10 @@ export default function Login({ onLogin }) {
           {loading ? 'Checking...' : 'Login'}
         </button>
       </form>
+
+      <p style={{ marginTop: '1rem' }}>
+        Don't have an account? <Link to="/register">Register here</Link>.
+      </p>
 
       {error && <p style={{ color: 'red' }}>{error}</p>}
       {success && <p style={{ color: 'green' }}>{success}</p>}
